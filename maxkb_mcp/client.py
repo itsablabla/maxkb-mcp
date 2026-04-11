@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import atexit
+import asyncio
 import httpx
 import time
 from typing import Any
@@ -18,6 +20,26 @@ class MaxKBClient:
         self._token: str | None = None
         self._token_expires: float = 0
         self._http = httpx.AsyncClient(timeout=60, verify=True)
+
+        # Register shutdown hook to close the HTTP client
+        atexit.register(self._sync_close)
+
+    def _sync_close(self) -> None:
+        """Synchronously close the HTTP client (for atexit)."""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self._http.aclose())
+            else:
+                loop.run_until_complete(self._http.aclose())
+        except Exception:
+            pass
+
+    async def __aenter__(self) -> "MaxKBClient":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        await self.close()
 
     async def _login(self) -> str:
         resp = await self._http.post(

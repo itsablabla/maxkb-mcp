@@ -301,7 +301,6 @@ async def chat_completions(
     application_id: str,
     api_key: str,
     message: str,
-    stream: bool = False,
 ) -> str:
     """Send a chat message to an agent using the OpenAI-compatible API.
 
@@ -309,7 +308,6 @@ async def chat_completions(
         application_id: The agent's UUID
         api_key: The agent's API key (e.g. agent-xxxx)
         message: The user message to send
-        stream: Whether to stream the response (default: false)
     """
     c = _get_client()
     url = f"{c.base_url}/chat/api/{application_id}/chat/completions"
@@ -317,7 +315,7 @@ async def chat_completions(
         url,
         json={
             "messages": [{"role": "user", "content": message}],
-            "stream": stream,
+            "stream": False,
         },
         headers={
             "Authorization": f"Bearer {api_key}",
