@@ -7,6 +7,7 @@ import os
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from maxkb_mcp.client import MaxKBClient
 
 # ---------------------------------------------------------------------------
@@ -189,24 +190,14 @@ async def get_application_access_token(
 
 
 @mcp.tool()
-async def list_application_api_keys(
-    application_id: str, workspace: str | None = None
-) -> str:
-    """List API keys for an agent (also creates one if none exist)."""
-    c = _get_client()
-    # MaxKB uses POST to list/create API keys
-    r = await c.post(
-        f"workspace/{_ws(workspace)}/application/{application_id}/application_key",
-        json={},
-    )
-    return json.dumps(r, indent=2, ensure_ascii=False)
-
-
-@mcp.tool()
 async def create_application_api_key(
     application_id: str, workspace: str | None = None
 ) -> str:
-    """Create a new API key for an agent."""
+    """Create a new API key for an agent. Returns the newly created key with its secret.
+
+    Note: MaxKB's API key endpoint always creates a new key on POST.
+    There is no separate list endpoint — use get_application to see existing keys.
+    """
     c = _get_client()
     r = await c.post(
         f"workspace/{_ws(workspace)}/application/{application_id}/application_key",
@@ -971,8 +962,29 @@ def main():
     transport = os.environ.get("MCP_TRANSPORT", "stdio")
     host = os.environ.get("MCP_HOST", "0.0.0.0")
     port = int(os.environ.get("MCP_PORT", "8000"))
+
+    # Configure allowed hosts for external access (DNS rebinding protection)
+    allowed_hosts_str = os.environ.get("MCP_ALLOWED_HOSTS", "")
+    if allowed_hosts_str:
+        allowed_hosts = [h.strip() for h in allowed_hosts_str.split(",") if h.strip()]
+    else:
+        allowed_hosts = []
+
     mcp.settings.host = host
     mcp.settings.port = port
+
+    if transport in ("sse", "streamable-http") and allowed_hosts:
+        mcp.settings.transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=allowed_hosts,
+        )
+    elif transport in ("sse", "streamable-http"):
+        # Disable DNS rebinding protection when no allowed hosts specified
+        # (for development or when behind a reverse proxy like Traefik)
+        mcp.settings.transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+        )
+
     if transport == "sse":
         mcp.run(transport="sse")
     elif transport == "streamable-http":

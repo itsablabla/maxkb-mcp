@@ -19,6 +19,7 @@ class MaxKBClient:
         self.password = password
         self._token: str | None = None
         self._token_expires: float = 0
+        self._token_lock = asyncio.Lock()
         self._http = httpx.AsyncClient(timeout=60, verify=True)
 
         # Register shutdown hook to close the HTTP client
@@ -55,9 +56,10 @@ class MaxKBClient:
         return self._token
 
     async def _ensure_token(self) -> str:
-        if not self._token or time.time() >= self._token_expires:
-            return await self._login()
-        return self._token
+        async with self._token_lock:
+            if not self._token or time.time() >= self._token_expires:
+                return await self._login()
+            return self._token
 
     async def request(
         self,
