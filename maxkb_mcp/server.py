@@ -129,7 +129,7 @@ async def update_application(
     if system_prompt is not None:
         payload["system"] = system_prompt
     if mcp_servers is not None:
-        payload["mcp_servers"] = mcp_servers
+        payload["mcp_servers"] = json.loads(mcp_servers)
     if mcp_enable is not None:
         payload["mcp_enable"] = mcp_enable
         payload["mcp_output_enable"] = mcp_enable
