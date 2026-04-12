@@ -428,6 +428,7 @@ async def knowledge_hit_test(
     query: str,
     top_n: int = 5,
     similarity: float = 0.6,
+    search_mode: str = "embedding",
     workspace: str | None = None,
 ) -> str:
     """Test knowledge retrieval by searching for relevant paragraphs.
@@ -437,6 +438,8 @@ async def knowledge_hit_test(
         query: Search query text
         top_n: Number of results to return
         similarity: Minimum similarity threshold (0-1)
+        search_mode: Search mode — 'embedding' (vector), 'keywords' (full-text),
+                     or 'blend' (hybrid). Defaults to 'embedding'.
     """
     c = _get_client()
     r = await c.post(
@@ -445,6 +448,7 @@ async def knowledge_hit_test(
             "query_text": query,
             "top_number": top_n,
             "similarity": similarity,
+            "search_mode": search_mode,
         },
     )
     return json.dumps(r, indent=2, ensure_ascii=False)
